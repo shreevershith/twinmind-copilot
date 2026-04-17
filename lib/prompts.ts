@@ -27,7 +27,7 @@ Output format: return ONLY valid JSON matching this shape, no markdown, no expla
   ]
 }
 
-Transcript (last ~N tokens):
+Transcript (most recent segment only, focus entirely on this):
 {TRANSCRIPT}`;
 
 export const DEFAULT_CHAT_PROMPT = `You are a meeting copilot.

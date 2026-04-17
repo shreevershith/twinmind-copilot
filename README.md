@@ -34,23 +34,29 @@ Three things happen in one call:
 
 Also: CLARIFY is tightened to "technical term, acronym, or domain-specific assumption" and explicitly forbidden from flagging common idioms, because otherwise the model latches onto phrases like "touch base" and produces weak cards.
 
+A final selection rule tells the model to focus on the most recent part of the transcript and not re-flag claims already covered in earlier batches. This pairs with a client-side slice (see Context windows below) that sends only the last 3 transcript entries, so the opening statement of a meeting doesn't get re-suggested every 30 s as the conversation moves on.
+
 ### 2. Detailed-answer prompt (`DEFAULT_DETAIL_ANSWER_PROMPT`)
 
 Fires when the user **taps a suggestion card**. Separate from the freeform chat prompt because the job is different: the preview is already in the chat as the user message, and the assistant's job is a longer-form, structured expansion, not a generic Q&A reply. The prompt branches on the suggestion type (QUESTION → how to phrase it + what to listen for; FACT_CHECK → what to verify; etc.) and demands a specific structure (lead sentence + 3–5 sentences or short bullet list).
 
 ### 3. Chat prompt (`DEFAULT_CHAT_PROMPT`)
 
-Fires when the user **types their own question**. A short, forceful grounding prompt: "Answer ONLY based on the transcript provided below. Do not use outside knowledge. If the answer isn't in the transcript, say so." This kills the single biggest failure mode: the model silently falling back to generic information about apps/meetings/products when the transcript doesn't actually contain the answer.
+Fires when the user **types their own question**. The prompt tells the model to answer from the transcript **and the conversation history so far**, and to elaborate using its own knowledge where helpful. Follow-ups like "expand on that" should use the assistant's prior answer as primary context rather than refusing because the elaboration isn't verbatim in the transcript.
+
+An earlier iteration forced "Answer ONLY from the transcript. Do not use outside knowledge" to prevent hallucinated topic drift, but that made follow-ups brittle: the model would refuse to elaborate on its own prior answer because the elaboration wasn't in the transcript. The current wording keeps the transcript as the anchor but lets the conversation itself count as valid context.
 
 The chat prompt is deliberately **a system prompt**, not a single-user-message template. `/api/chat` sends `[system (transcript-primed), ...priorChatHistory, userQuestion]` to Groq, a proper multi-turn conversation. This matters because follow-up questions ("tell me more about that") need access to prior turns; collapsing everything into one user message loses that structure and hurts chat quality.
 
 ### Context windows
 
-Three windows, one per prompt, all in chars (not tokens, since dragging in a tokenizer to save a few trivial bytes isn't worth it):
+Context differs per prompt:
 
-- `suggestionContextChars` (default 3200 ≈ 800 tokens). Tail slice. Live suggestions should be about the last ~2 minutes, not the whole meeting.
-- `detailContextChars` (default 0 = full). When the user taps a card, we want the full transcript available, because a card that fired 5 minutes ago may reference something said 10 minutes before that.
-- `chatContextChars` (default 0 = full). Same reasoning for freeform questions.
+- **Live suggestions** get only the last **3 transcript entries** (roughly the most recent ~90 s of speech). A fixed entry count beats a char-slice for short demos: with any generous char window, `slice(-N)` returns the full transcript and the model re-flags opening claims every batch. `suggestionContextChars` remains in the settings panel for backward compatibility with saved sessions but no longer drives suggestion context.
+- **Detailed answer on card tap** uses `detailContextChars` for the tail slice, defaulting to the full transcript (`0 = full`). A card that fired 5 minutes in may reference something said 10 minutes before that, so full history is the right default.
+- **Freeform chat** also defaults to the full transcript (`chatContextChars = 0`). Same reasoning: the user may ask about anything said earlier in the meeting.
+
+Both `detailContextChars` and `chatContextChars` are in chars (not tokens, since dragging in a tokenizer to save a few trivial bytes isn't worth it).
 
 ## Tradeoffs & what I'd do with more time
 
@@ -115,7 +121,7 @@ The **Export JSON** button in the header downloads a session snapshot:
 | Groq API key | (none) | Required. `localStorage` only. |
 | LLM model | `openai/gpt-oss-120b` | Change if Groq renames the model. |
 | Refresh interval | 30 s | Doubles as the audio-chunk length. |
-| Suggestion context (chars) | 3200 | ~800 tokens. Tail slice of transcript. |
+| Suggestion context (chars) | 3200 | Legacy. Suggestion context is now fixed at the last 3 transcript entries (~90 s); this field is retained in the UI for saved-session compatibility but no longer drives suggestion context. |
 | Detail context (chars) | 0 | 0 = full transcript. Used on card click. |
 | Chat context (chars) | 0 | 0 = full transcript. Used for freeform chat. |
 | Suggestion prompt | (see `lib/prompts.ts`) | Must contain `{TRANSCRIPT}`. |

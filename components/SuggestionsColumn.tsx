@@ -17,7 +17,7 @@ function formatTime(iso: string): string {
 }
 
 export function SuggestionsColumn() {
-  const { state, dispatch, joinedTranscript, flushRecorderRef } = useSession();
+  const { state, stateRef, dispatch, flushRecorderRef } = useSession();
   const { settings, settingsRef } = useSettings();
   const { send } = useChatSend();
   const abortRef = useRef<AbortController | null>(null);
@@ -28,14 +28,19 @@ export function SuggestionsColumn() {
       dispatch({ type: "setError", message: "Set your Groq API key first." });
       return;
     }
-    const full = joinedTranscript();
-    if (!full.trim()) return;
+
+    // Send only the last 3 transcript entries (roughly the most recent
+    // ~90 s of speech). Using a fixed entry count rather than a char
+    // slice prevents the model from re-seeing older chunks on short
+    // demo transcripts, where a char-slice default would effectively
+    // return the whole transcript and cause repeated suggestions.
+    const recentEntries = stateRef.current.transcript.slice(-3);
+    const sliced = recentEntries.map((e) => e.text).join("\n");
+    if (!sliced.trim()) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
-    const sliced = full.slice(-settings.suggestionContextChars);
 
     dispatch({ type: "setGeneratingSuggestions", value: true });
     try {
@@ -60,7 +65,7 @@ export function SuggestionsColumn() {
     } finally {
       dispatch({ type: "setGeneratingSuggestions", value: false });
     }
-  }, [dispatch, joinedTranscript, settingsRef]);
+  }, [dispatch, settingsRef, stateRef]);
 
   useEffect(() => {
     if (!state.isRecording) return;
