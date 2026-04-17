@@ -34,7 +34,7 @@ Three things happen in one call:
 
 Also: CLARIFY is tightened to "technical term, acronym, or domain-specific assumption" and explicitly forbidden from flagging common idioms, because otherwise the model latches onto phrases like "touch base" and produces weak cards.
 
-A final selection rule tells the model to focus on the most recent part of the transcript and not re-flag claims already covered in earlier batches. This pairs with a client-side slice (see Context windows below) that sends only the last 3 transcript entries, so the opening statement of a meeting doesn't get re-suggested every 30 s as the conversation moves on.
+A final selection rule tells the model to focus on the most recent part of the transcript and not re-flag claims already covered in earlier batches. The rule alone is toothless, because each `/api/suggestions` call is stateless and the model has no memory of its own prior output. To make the rule effective, the client sends the last two batches' previews back with every request; the server appends them to the prompt as an explicit "already suggested, do NOT repeat these" block. Combined with a transcript slice limited to the last 3 entries (see Context windows below), this prevents the opening statement of a meeting from being re-suggested every 30 s as the conversation moves on.
 
 ### 2. Detailed-answer prompt (`DEFAULT_DETAIL_ANSWER_PROMPT`)
 
@@ -66,6 +66,7 @@ Both `detailContextChars` and `chatContextChars` are in chars (not tokens, since
 - **On-device Whisper.** Sending 30 s blobs to Groq on every cycle works but burns network and API cost. Running `whisper.cpp`/WebGPU Whisper locally and falling back to Groq only on failure would cut perceived latency.
 - **Robustness around audio formats.** `MediaRecorder` MIME types vary (Chrome = `audio/webm;codecs=opus`, Safari = `audio/mp4`). The recorder logs the actual MIME once on start and the Whisper endpoint accepts webm/mp4/ogg. A Safari/iOS pass would surface any remaining rough edges.
 - **Cancellation UX.** `AbortController` is wired into the suggestion fetch and the chat stream (the Stop button in chat calls it), but a similar affordance for in-flight transcription would make "I misspoke, skip this chunk" possible.
+- **Domain-vocabulary hints for Whisper.** Whisper occasionally mishears domain-specific acronyms like RAG as "drag". Passing a prompt or vocabulary hint to Whisper would improve accuracy in technical conversations.
 
 ## Architecture at a glance
 
