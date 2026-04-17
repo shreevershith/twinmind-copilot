@@ -20,6 +20,15 @@ type MutableRef<T> = { current: T };
 
 const STORAGE_KEY = "twinmind.settings.v1";
 
+// Bump when DEFAULT_SUGGESTION_PROMPT / DEFAULT_DETAIL_ANSWER_PROMPT /
+// DEFAULT_CHAT_PROMPT change in a way that saved-prompt copies would
+// contradict. On load, stored settings with an older promptVersion have their
+// prompt fields reset to the current defaults; apiKey and numeric settings
+// are preserved so users don't have to re-paste their key on every update.
+const CURRENT_PROMPT_VERSION = 2;
+
+type StoredSettings = Settings & { promptVersion?: number };
+
 export const DEFAULT_SETTINGS: Settings = {
   apiKey: "",
   suggestionPrompt: DEFAULT_SUGGESTION_PROMPT,
@@ -46,7 +55,28 @@ function loadFromStorage(): Settings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw) as Partial<Settings>;
+    const parsed = JSON.parse(raw) as Partial<StoredSettings>;
+
+    if (parsed.promptVersion !== CURRENT_PROMPT_VERSION) {
+      // Old or missing version: pick up non-prompt user preferences,
+      // but force the three prompts back to current defaults so code-level
+      // prompt improvements actually reach the user.
+      return {
+        ...DEFAULT_SETTINGS,
+        apiKey: parsed.apiKey ?? "",
+        llmModel: parsed.llmModel ?? DEFAULT_SETTINGS.llmModel,
+        refreshIntervalSec:
+          parsed.refreshIntervalSec ?? DEFAULT_SETTINGS.refreshIntervalSec,
+        suggestionContextChars:
+          parsed.suggestionContextChars ??
+          DEFAULT_SETTINGS.suggestionContextChars,
+        detailContextChars:
+          parsed.detailContextChars ?? DEFAULT_SETTINGS.detailContextChars,
+        chatContextChars:
+          parsed.chatContextChars ?? DEFAULT_SETTINGS.chatContextChars,
+      };
+    }
+
     return { ...DEFAULT_SETTINGS, ...parsed };
   } catch {
     return DEFAULT_SETTINGS;
@@ -70,7 +100,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const next = { ...prev, ...patch };
       settingsRef.current = next;
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        const stored: StoredSettings = {
+          ...next,
+          promptVersion: CURRENT_PROMPT_VERSION,
+        };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
       } catch {
         // ignore quota / privacy-mode failures
       }

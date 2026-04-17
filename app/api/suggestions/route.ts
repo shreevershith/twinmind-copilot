@@ -53,6 +53,7 @@ export async function POST(req: Request) {
     transcript?: string;
     prompt?: string;
     model?: string;
+    priorSuggestions?: Array<{ type?: string; preview?: string }>;
   } | null;
 
   if (!body?.transcript || !body?.prompt || !body?.model) {
@@ -62,7 +63,22 @@ export async function POST(req: Request) {
     );
   }
 
-  const userPrompt = body.prompt.replace("{TRANSCRIPT}", body.transcript);
+  let userPrompt = body.prompt.replace("{TRANSCRIPT}", body.transcript);
+
+  // If we have prior batches, tell the model exactly what it already flagged
+  // so it stops re-suggesting the same claims. The prompt's "don't repeat"
+  // rule is toothless on its own because each /api/suggestions call is
+  // stateless; the model needs to see the history to honour the rule.
+  if (body.priorSuggestions && body.priorSuggestions.length > 0) {
+    const priorList = body.priorSuggestions
+      .filter((s) => s && s.type && s.preview)
+      .map((s) => `- [${s.type}] ${s.preview}`)
+      .join("\n");
+    if (priorList) {
+      userPrompt += `\n\nAlready suggested in recent batches (do NOT repeat these; the user has already seen them, find fresh angles):\n${priorList}`;
+    }
+  }
+
   const timestamp = new Date().toISOString();
 
   try {

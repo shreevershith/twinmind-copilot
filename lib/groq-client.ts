@@ -50,6 +50,7 @@ export async function fetchSuggestions(
     transcript: string;
     prompt: string;
     model: string;
+    priorSuggestions?: Array<{ type: string; preview: string }>;
   },
   signal?: AbortSignal,
 ): Promise<{ suggestions: Suggestion[]; timestamp: string }> {

@@ -42,6 +42,15 @@ export function SuggestionsColumn() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Pull the previews + types from the last two batches so the model can
+    // avoid re-suggesting what the user has already seen. Each /api/suggestions
+    // call is stateless, so the server has to be told the recent history.
+    const priorSuggestions = stateRef.current.suggestionBatches
+      .slice(0, 2)
+      .flatMap((b) => b.suggestions)
+      .filter((s) => s.type !== "ERROR" && s.preview)
+      .map((s) => ({ type: s.type, preview: s.preview }));
+
     dispatch({ type: "setGeneratingSuggestions", value: true });
     try {
       const { suggestions, timestamp } = await fetchSuggestions(
@@ -50,6 +59,7 @@ export function SuggestionsColumn() {
           transcript: sliced,
           prompt: settings.suggestionPrompt,
           model: settings.llmModel,
+          priorSuggestions,
         },
         controller.signal,
       );
