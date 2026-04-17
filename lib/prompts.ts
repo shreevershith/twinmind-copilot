@@ -14,6 +14,7 @@ Selection rules:
 - If a strong factual claim was made → consider a FACT_CHECK
 - Never return 3 suggestions of the same type
 - Vary types based on what's actually happening in the conversation
+- Focus on the MOST RECENT part of the transcript. Do not re-flag or repeat suggestions for claims or topics already covered in earlier batches.
 
 Output format: return ONLY valid JSON matching this shape, no markdown, no explanation.
 {
@@ -29,8 +30,10 @@ Output format: return ONLY valid JSON matching this shape, no markdown, no expla
 Transcript (last ~N tokens):
 {TRANSCRIPT}`;
 
-export const DEFAULT_CHAT_PROMPT = `You are a meeting copilot. Answer ONLY based on the transcript provided below.
-Do not use outside knowledge. If the answer isn't in the transcript, say so explicitly. Do not guess. Do not fall back to generic information about apps, products, or meetings.
+export const DEFAULT_CHAT_PROMPT = `You are a meeting copilot.
+Answer based on the transcript and the conversation history above.
+When the user asks a follow-up or says "expand on that", use the conversation history as your primary source and elaborate using your own knowledge where helpful.
+Do not refuse to answer by saying the transcript doesn't contain enough information, use what's available in the conversation history first.
 
 Be direct. Lead with the answer. Elaboration after.
 
