@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). On first load the app asks for a Groq API key — paste one from [console.groq.com/keys](https://console.groq.com/keys). The key is stored in `localStorage` only; every client → server request forwards it as `Authorization: Bearer …`, and the server uses it to instantiate `new Groq({ apiKey })` per request. It is never logged or persisted server-side.
+Open [https://twinmind-copilot-rho.vercel.app/](https://twinmind-copilot-rho.vercel.app/). On first load the app asks for a Groq API key — paste one from [console.groq.com/keys](https://console.groq.com/keys). The key is stored in `localStorage` only; every client → server request forwards it as `Authorization: Bearer …`, and the server uses it to instantiate `new Groq({ apiKey })` per request. It is never logged or persisted server-side.
 
 Click **Start recording**, speak for 30 s, and a transcript chunk + a batch of three suggestions will appear. Click any card to pipe it into the chat column, or type your own question.
 
