@@ -73,7 +73,7 @@ export class ChunkedRecorder {
       try {
         this.recorder.stop();
       } catch {
-        // ignore — we're tearing down
+        // ignore, we're tearing down
       }
     }
     this.releaseStream();
@@ -85,7 +85,7 @@ export class ChunkedRecorder {
   /**
    * Force-emit the current audio buffer as a chunk immediately, without
    * waiting for the next 30s tick. Resolves after the chunk has been handed
-   * to onChunk and the handler (possibly async — e.g. a transcription call)
+   * to onChunk and the handler (possibly async, e.g. a transcription call)
    * has completed. Used by the manual Refresh button so suggestions can
    * reflect whatever was just said.
    */

@@ -25,7 +25,7 @@ export function ApiKeyGate({ children }: { children: React.ReactNode }) {
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
           Paste your Groq API key to get started. It&apos;s stored in your
-          browser only — we never send it anywhere but to Groq.
+          browser only. We never send it anywhere but to Groq.
         </p>
         <form
           className="mt-5 space-y-3"

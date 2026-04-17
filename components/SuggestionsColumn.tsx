@@ -91,7 +91,7 @@ export function SuggestionsColumn() {
       try {
         await flushRecorderRef.current();
       } catch {
-        // ignore — run() will still execute with whatever transcript exists
+        // ignore, run() will still execute with whatever transcript exists
       }
     }
     await run();
